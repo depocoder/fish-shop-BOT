@@ -1,6 +1,7 @@
 import os
 import logging
 
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Filters, Updater
 from telegram.ext import (
@@ -55,7 +56,7 @@ def handle_users_reply(update: Update, context: CallbackContext):
     if user_reply == '/start':
         user_state = 'START'
     else:
-        context.user_data.get('state')
+        user_state = context.user_data.get('state')
     states_functions = {
         'START': start,
         'ECHO': echo
@@ -65,15 +66,15 @@ def handle_users_reply(update: Update, context: CallbackContext):
     # Оставляю этот try...except, чтобы код не падал молча.
     # Этот фрагмент можно переписать.
     try:
-        next_state = state_handler(update: Update, context: CallbackContext)
+        next_state = state_handler(update, context)
         context.user_data.update({"state": next_state})
     except Exception as err:
         print(err)
 
 
 if __name__ == '__main__':
-    token = os.getenv("TELEGRAM_TOKEN")
-    updater = Updater(token)
+    load_dotenv()
+    updater = Updater(token=os.getenv("TG_TOKEN"), use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
