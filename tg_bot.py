@@ -18,7 +18,7 @@ def start(update: Update, context: CallbackContext):
     return "ECHO"
 
 
-def echo(bot, update):
+def echo(update: Update, context: CallbackContext):
     """
     Хэндлер для состояния ECHO.
     
