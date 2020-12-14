@@ -30,7 +30,7 @@ def echo(update: Update, context: CallbackContext):
     return "ECHO"
 
 
-def handle_users_reply(bot, update):
+def handle_users_reply(update: Update, context: CallbackContext):
     """
     Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
 
@@ -44,7 +44,6 @@ def handle_users_reply(bot, update):
     поэтому по этой фразе выставляется стартовое состояние.
     Если пользователь захочет начать общение с ботом заново, он также может воспользоваться этой командой.
     """
-    db = get_database_connection()
     if update.message:
         user_reply = update.message.text
         chat_id = update.message.chat_id
@@ -56,9 +55,7 @@ def handle_users_reply(bot, update):
     if user_reply == '/start':
         user_state = 'START'
     else:
-        user_state = db.get(chat_id).decode("utf-8")
-        context.bot_data.get("")
-    
+        context.user_data.get('state')
     states_functions = {
         'START': start,
         'ECHO': echo
@@ -68,8 +65,8 @@ def handle_users_reply(bot, update):
     # Оставляю этот try...except, чтобы код не падал молча.
     # Этот фрагмент можно переписать.
     try:
-        next_state = state_handler(bot, update)
-        db.set(chat_id, next_state)
+        next_state = state_handler(update: Update, context: CallbackContext)
+        context.user_data.update({"state": next_state})
     except Exception as err:
         print(err)
 
