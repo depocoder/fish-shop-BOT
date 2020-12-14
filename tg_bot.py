@@ -1,11 +1,13 @@
 import os
 import logging
 
+from telegram import Update
 from telegram.ext import Filters, Updater
-from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
+from telegram.ext import (
+    CallbackQueryHandler, CommandHandler, MessageHandler, CallbackContext)
 
 
-def start(bot, update):
+def start(update: Update, context: CallbackContext):
     """
     Хэндлер для состояния START.
     
