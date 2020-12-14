@@ -19,3 +19,29 @@ def get_id_item(access_token):
         'Content-Type': 'application/json',
     })
     return json.loads(response.text)['data'][0]['id']
+
+
+def add_to_cart(access_token):
+    headers = {
+        'Authorization': 'Bearer XXXX',
+        'Content-Type': 'application/json',
+        }
+    item_id = get_id_item(access_token)
+    print(item_id)
+    data = {"data": {"id": item_id,
+                     "type": "cart_item", "quantity": 1}}
+    headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+            }
+
+    response = requests.post(
+        'https://api.moltin.com/v2/carts/:reference/items', headers=headers,
+        data=json.dumps(data))
+    print(response.text)
+
+
+if __name__ == "__main__":
+    load_dotenv()
+    access_token = get_access_token()
+    add_to_cart(access_token)
