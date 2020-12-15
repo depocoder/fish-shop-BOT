@@ -2,27 +2,51 @@ import os
 import logging
 
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Filters, Updater
 from telegram.ext import (
     CallbackQueryHandler, CommandHandler, MessageHandler, CallbackContext)
 
 
+logger = logging.getLogger(__name__)
+
+
 def start(update: Update, context: CallbackContext):
     """
     Хэндлер для состояния START.
-    
+
     Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
     Теперь в ответ на его команды будет запускаеться хэндлер echo.
     """
-    update.message.reply_text(text='Привет!')
+    keyboard = [
+        [
+            InlineKeyboardButton("Option 1", callback_data='1'),
+            InlineKeyboardButton("Option 2", callback_data='2'),
+        ],
+        [InlineKeyboardButton("Option 3", callback_data='3')],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    update.message.reply_text('Please choose:', reply_markup=reply_markup)
+    return 'BUTTON'
+
+
+def button(update: Update, context: CallbackContext):
+    query = update.callback_query
+
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    query.answer()
+
+    query.edit_message_text(text=f"Selected option: {query.data}")
     return "ECHO"
 
 
 def echo(update: Update, context: CallbackContext):
     """
     Хэндлер для состояния ECHO.
-    
+
     Бот отвечает пользователю тем же, что пользователь ему написал.
     Оставляет пользователя в состоянии ECHO.
     """
@@ -57,9 +81,11 @@ def handle_users_reply(update: Update, context: CallbackContext):
         user_state = 'START'
     else:
         user_state = context.user_data.get('state')
+
     states_functions = {
         'START': start,
-        'ECHO': echo
+        'ECHO': echo,
+        'BUTTON': button,
     }
     state_handler = states_functions[user_state]
     # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
@@ -73,10 +99,15 @@ def handle_users_reply(update: Update, context: CallbackContext):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO
+    )
     load_dotenv()
     updater = Updater(token=os.getenv("TG_TOKEN"), use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
     dispatcher.add_handler(CommandHandler('start', handle_users_reply))
     updater.start_polling()
