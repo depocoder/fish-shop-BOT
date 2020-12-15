@@ -60,9 +60,17 @@ def add_to_cart(access_token):
     return response.text
 
 
+def download_image_by_id(access_token, image_id):
+    response = requests.get(
+        f'https://api.moltin.com/v2/files/{image_id}',
+        headers={
+            'Authorization': f'Bearer {access_token}'})
+    print(access_token)
+    response.raise_for_status()
+
+
 if __name__ == "__main__":
     load_dotenv()
     redis_conn = redis.Redis(
         host=os.getenv('REDIS_HOST'), password=os.getenv('REDIS_PASSWORD'),
-        port=os.getenv('REDIS_PORT'), db=0)
-    get_access_token(redis_conn)
+        port=os.getenv('REDIS_PORT'), db=0, decode_responses=True)
