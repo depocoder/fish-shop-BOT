@@ -1,46 +1,63 @@
 import os
 import logging
+from functools import partial
+import textwrap
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Filters, Updater
 from telegram.ext import (
     CallbackQueryHandler, CommandHandler, MessageHandler, CallbackContext)
+import redis
+
+from motlin_api import get_products, get_access_token, get_element_by_id
 
 
 logger = logging.getLogger(__name__)
 
 
-def start(update: Update, context: CallbackContext):
+def start(redis_conn, update: Update, context: CallbackContext):
     """
     Хэндлер для состояния START.
 
     Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
     Теперь в ответ на его команды будет запускаеться хэндлер echo.
     """
-    keyboard = [
-        [
-            InlineKeyboardButton("Option 1", callback_data='1'),
-            InlineKeyboardButton("Option 2", callback_data='2'),
-        ],
-        [InlineKeyboardButton("Option 3", callback_data='3')],
-    ]
+    keyboard = []
+    access_token = get_access_token(redis_conn)
+    for product in get_products(access_token):
+        keyboard.append([InlineKeyboardButton(
+            product['name'], callback_data=product['id'])])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     update.message.reply_text('Please choose:', reply_markup=reply_markup)
-    return 'BUTTON'
+    return 'HANDLE_MENU'
 
 
-def button(update: Update, context: CallbackContext):
+def handle_menu(redis_conn, update: Update, context: CallbackContext):
     query = update.callback_query
 
-    # CallbackQueries need to be answered, even if no notification to the user is needed
-    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     query.answer()
+    access_token = get_access_token(redis_conn)
+    product_info = get_element_by_id(access_token, query.data)
+    print(product_info)
+    name = product_info['name']
+    description = product_info['description']
+    price = product_info['meta']['display_price']['with_tax']['formatted']
+    weight = product_info['weight']['kg']
+    text_mess = (
+        f'''\
+        {name}
+        
+        {price} price per kg
+        {weight}kg on stock
 
-    query.edit_message_text(text=f"Selected option: {query.data}")
-    return "ECHO"
+        {description}
+        ''')
+                
+    query.edit_message_text(text=textwrap.dedent(text_mess))
+    return "START"
 
 
 def echo(update: Update, context: CallbackContext):
@@ -55,7 +72,7 @@ def echo(update: Update, context: CallbackContext):
     return "ECHO"
 
 
-def handle_users_reply(update: Update, context: CallbackContext):
+def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
     """
     Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
 
@@ -69,6 +86,8 @@ def handle_users_reply(update: Update, context: CallbackContext):
     поэтому по этой фразе выставляется стартовое состояние.
     Если пользователь захочет начать общение с ботом заново, он также может воспользоваться этой командой.
     """
+    p_start = partial(start, redis_conn)
+    p_handle_menu = partial(handle_menu, redis_conn)
     if update.message:
         user_reply = update.message.text
         chat_id = update.message.chat_id
@@ -83,9 +102,9 @@ def handle_users_reply(update: Update, context: CallbackContext):
         user_state = context.user_data.get('state')
 
     states_functions = {
-        'START': start,
+        'START': p_start,
         'ECHO': echo,
-        'BUTTON': button,
+        'HANDLE_MENU': p_handle_menu,
     }
     state_handler = states_functions[user_state]
     # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
@@ -104,10 +123,15 @@ if __name__ == '__main__':
         level=logging.INFO
     )
     load_dotenv()
+    redis_conn = redis.Redis(
+        host=os.getenv('REDIS_HOST'), password=os.getenv('REDIS_PASSWORD'),
+        port=os.getenv('REDIS_PORT'), db=0, decode_responses=True)
+    p_handle_users_reply = partial(handle_users_reply, redis_conn)
+    p_handle_menu = partial(handle_menu, redis_conn)
     updater = Updater(token=os.getenv("TG_TOKEN"), use_context=True)
     dispatcher = updater.dispatcher
-    dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
-    updater.dispatcher.add_handler(CallbackQueryHandler(button))
-    dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
-    dispatcher.add_handler(CommandHandler('start', handle_users_reply))
+    dispatcher.add_handler(CallbackQueryHandler(p_handle_users_reply))
+    updater.dispatcher.add_handler(CallbackQueryHandler(p_handle_menu))
+    dispatcher.add_handler(MessageHandler(Filters.text, p_handle_users_reply))
+    dispatcher.add_handler(CommandHandler('start', p_handle_users_reply))
     updater.start_polling()
