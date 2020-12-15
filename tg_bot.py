@@ -3,7 +3,6 @@ import logging
 from functools import partial
 import textwrap
 
-
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Filters, Updater
@@ -11,7 +10,8 @@ from telegram.ext import (
     CallbackQueryHandler, CommandHandler, MessageHandler, CallbackContext)
 import redis
 
-from motlin_api import get_products, get_access_token, get_element_by_id, download_image_by_id
+from motlin_api import (
+    get_products, get_access_token, get_element_by_id, get_link_image)
 
 
 logger = logging.getLogger(__name__)
@@ -36,22 +36,24 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
     query.answer()
     access_token = get_access_token(redis_conn)
     product_info = get_element_by_id(access_token, query.data)
-    print(product_info)
     name = product_info['name']
     description = product_info['description']
     price = product_info['meta']['display_price']['with_tax']['formatted']
     weight = product_info['weight']['kg']
+    image_id = product_info['relationships']['main_image']['data']['id']
     text_mess = (
         f'''\
         {name}
-        
+
         {price} price per kg
         {weight}kg on stock
 
         {description}
         ''')
-                
-    query.edit_message_text(text=textwrap.dedent(text_mess))
+    image_link = get_link_image(access_token, image_id)['data']['link']['href']
+    context.bot.send_photo(
+        chat_id=update.effective_user.id, photo=image_link,
+        caption=textwrap.dedent(text_mess))
     return "START"
 
 
