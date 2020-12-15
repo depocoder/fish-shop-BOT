@@ -13,7 +13,7 @@ def get_access_token():
     return json.loads(response.text)['access_token']
 
 
-def get_items(access_token):
+def get_products(access_token):
     response = requests.get('https://api.moltin.com/v2/products', headers={
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ def add_to_cart(access_token):
         'Authorization': 'Bearer XXXX',
         'Content-Type': 'application/json',
         }
-    item_id = get_items(access_token)[0]['id']
+    item_id = get_products(access_token)[0]['id']
     data = {"data": {"id": item_id,
                      "type": "cart_item", "quantity": 1}}
     headers = {
@@ -42,4 +42,5 @@ def add_to_cart(access_token):
 if __name__ == "__main__":
     load_dotenv()
     access_token = get_access_token()
+    print(get_products(access_token))
     add_to_cart(access_token)
