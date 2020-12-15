@@ -3,6 +3,7 @@ import logging
 from functools import partial
 import textwrap
 
+
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Filters, Updater
@@ -10,19 +11,13 @@ from telegram.ext import (
     CallbackQueryHandler, CommandHandler, MessageHandler, CallbackContext)
 import redis
 
-from motlin_api import get_products, get_access_token, get_element_by_id
+from motlin_api import get_products, get_access_token, get_element_by_id, download_image_by_id
 
 
 logger = logging.getLogger(__name__)
 
 
 def start(redis_conn, update: Update, context: CallbackContext):
-    """
-    Хэндлер для состояния START.
-
-    Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
-    Теперь в ответ на его команды будет запускаеться хэндлер echo.
-    """
     keyboard = []
     access_token = get_access_token(redis_conn)
     for product in get_products(access_token):
@@ -61,39 +56,18 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
 
 
 def echo(update: Update, context: CallbackContext):
-    """
-    Хэндлер для состояния ECHO.
-
-    Бот отвечает пользователю тем же, что пользователь ему написал.
-    Оставляет пользователя в состоянии ECHO.
-    """
     users_reply = update.message.text
     update.message.reply_text(users_reply)
     return "ECHO"
 
 
 def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
-    """
-    Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
-
-    Эта функция запускается в ответ на эти действия пользователя:
-        * Нажатие на inline-кнопку в боте
-        * Отправка сообщения боту
-        * Отправка команды боту
-    Она получает стейт пользователя из базы данных и запускает соответствующую функцию-обработчик (хэндлер).
-    Функция-обработчик возвращает следующее состояние, которое записывается в базу данных.
-    Если пользователь только начал пользоваться ботом, Telegram форсит его написать "/start",
-    поэтому по этой фразе выставляется стартовое состояние.
-    Если пользователь захочет начать общение с ботом заново, он также может воспользоваться этой командой.
-    """
     p_start = partial(start, redis_conn)
     p_handle_menu = partial(handle_menu, redis_conn)
     if update.message:
         user_reply = update.message.text
-        chat_id = update.message.chat_id
     elif update.callback_query:
         user_reply = update.callback_query.data
-        chat_id = update.callback_query.message.chat_id
     else:
         return
     if user_reply == '/start':

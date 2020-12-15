@@ -65,7 +65,6 @@ def download_image_by_id(access_token, image_id):
         f'https://api.moltin.com/v2/files/{image_id}',
         headers={
             'Authorization': f'Bearer {access_token}'})
-    print(access_token)
     response.raise_for_status()
 
 
