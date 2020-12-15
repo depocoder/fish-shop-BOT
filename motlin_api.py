@@ -28,7 +28,7 @@ def get_element_by_id(access_token, id):
             'Authorization': f'Bearer {access_token}',
         })
     response.raise_for_status()
-    return json.loads(response.text)['data']
+    return response.json()['data']
 
 
 def get_products(access_token):
@@ -37,7 +37,7 @@ def get_products(access_token):
         'Content-Type': 'application/json',
     })
     response.raise_for_status()
-    return json.loads(response.text)['data']
+    return response.json()['data']
 
 
 def add_to_cart(access_token):
@@ -57,15 +57,16 @@ def add_to_cart(access_token):
         'https://api.moltin.com/v2/carts/:reference/items', headers=headers,
         data=json.dumps(data))
     response.raise_for_status()
-    return response.text
+    return response.json()
 
 
-def download_image_by_id(access_token, image_id):
+def get_link_image(access_token, image_id):
     response = requests.get(
         f'https://api.moltin.com/v2/files/{image_id}',
         headers={
             'Authorization': f'Bearer {access_token}'})
     response.raise_for_status()
+    return response.json()
 
 
 if __name__ == "__main__":
