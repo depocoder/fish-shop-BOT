@@ -13,7 +13,7 @@ import redis
 
 from motlin_api import (
     get_products, get_access_token, get_element_by_id,
-    get_link_image, add_to_cart, get_cart, delete_from_cart)
+    get_link_image, add_to_cart, get_cart, delete_from_cart, create_customer)
 
 
 logger = logging.getLogger(__name__)
@@ -166,8 +166,11 @@ def waiting_email(redis_conn, update: Update, context: CallbackContext):
     users_reply = update.message.text
     is_valid = validate_email(users_reply)
     if is_valid:
+        access_token = get_access_token(redis_conn)
         update.message.reply_text(
             f"Вы прислали мне эту почту - {users_reply}. Мы скоро свяжемся.")
+        create_customer(
+            access_token, str(update.effective_user.id), users_reply)
         start(redis_conn, update, context)
         return "HANDLE_DESCRIPTION"
     update.message.reply_text(f"Ошибка! неверный email - '{users_reply}'")
