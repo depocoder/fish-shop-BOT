@@ -17,26 +17,6 @@ from motlin_api import (
 logger = logging.getLogger(__name__)
 
 
-def start(redis_conn, update: Update, context: CallbackContext):
-    keyboard = []
-    access_token = get_access_token(redis_conn)
-    for product in get_products(access_token):
-        keyboard.append([InlineKeyboardButton(
-            product['name'], callback_data=product['id'])])
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    context.bot.send_message(
-        text='Please choose:', chat_id=update.effective_user.id,
-        reply_markup=reply_markup)
-    return 'HANDLE_MENU'
-
-
-
-def handle_description():
-    pass
-
-
 def format_message(product_info):
     name = product_info['name']
     description = product_info['description']
@@ -54,9 +34,31 @@ def format_message(product_info):
     return textwrap.dedent(text_mess)
 
 
+def start(redis_conn, update: Update, context: CallbackContext):
+    keyboard = []
+    access_token = get_access_token(redis_conn)
+    for product in get_products(access_token):
+        keyboard.append([InlineKeyboardButton(
+            product['name'], callback_data=product['id'])])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    context.bot.send_message(
+        text='Please choose:', chat_id=update.effective_user.id,
+        reply_markup=reply_markup)
+    return 'HANDLE_MENU'
+
+
+def handle_description(redis_conn, update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    query.message.delete()
+    start(redis_conn, update, context)
+    return 'HANDLE_MENU'
+
+
 def handle_menu(redis_conn, update: Update, context: CallbackContext):
     query = update.callback_query
-
     query.answer()
     access_token = get_access_token(redis_conn)
     product_info = get_element_by_id(access_token, query.data)
@@ -65,10 +67,12 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
     image_link = get_link_image(access_token, image_id)['data']['link']['href']
     keyboard = [[InlineKeyboardButton('Назад', callback_data='Назад')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    context.bot.send_photo(
-        chat_id=update.effective_user.id, photo=image_link,
+    chat_id = update.effective_user.id
+    message_id = context.bot.send_photo(
+        chat_id=chat_id, photo=image_link,
         caption=text_mess, reply_markup=reply_markup)['message_id']
-    return "START"
+    query.message.delete()
+    return "HANDLE_DESCRIPTION"
 
 
 def echo(update: Update, context: CallbackContext):
@@ -80,6 +84,7 @@ def echo(update: Update, context: CallbackContext):
 def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
     p_start = partial(start, redis_conn)
     p_handle_menu = partial(handle_menu, redis_conn)
+    p_handle_description = partial(handle_description, redis_conn)
     if update.message:
         user_reply = update.message.text
     elif update.callback_query:
@@ -95,7 +100,7 @@ def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
         'START': p_start,
         'ECHO': echo,
         'HANDLE_MENU': p_handle_menu,
-        'HANDLE_DESCRIPTION': handle_description,
+        'HANDLE_DESCRIPTION': p_handle_description,
     }
     state_handler = states_functions[user_state]
     # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
