@@ -2,6 +2,7 @@ import os
 import logging
 import textwrap
 
+from requests.exceptions import HTTPError
 from validate_email import validate_email
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -168,10 +169,14 @@ def waiting_email(update: Update, context: CallbackContext):
     is_valid = validate_email(users_reply)
     if is_valid:
         access_token = get_access_token(redis_conn)
+        try:
+            create_customer(
+                access_token, str(update.effective_user.id), users_reply)
+        except HTTPError:
+            update.message.reply_text('Ошибка такой Email уже указывали!')
+            return "WAITING_EMAIL"
         update.message.reply_text(
             f"Вы прислали мне эту почту - {users_reply}. Мы скоро свяжемся.")
-        create_customer(
-            access_token, str(update.effective_user.id), users_reply)
         start(update, context)
         return "HANDLE_DESCRIPTION"
     update.message.reply_text(f"Ошибка! неверный email - '{users_reply}'")
