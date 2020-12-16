@@ -2,3 +2,4 @@ requests==2.25.0
 python-dotenv==0.14.0
 python-telegram-bot==13.1
 redis==3.5.3
+validate_email==1.3
