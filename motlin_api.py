@@ -1,8 +1,6 @@
 import os
 
-import redis
 import requests
-from dotenv import load_dotenv
 
 
 def get_access_token(redis_conn):
