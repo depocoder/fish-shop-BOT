@@ -86,12 +86,13 @@ def handle_cart(update: Update, context: CallbackContext):
     keyboard.append([InlineKeyboardButton('В меню', callback_data='В меню')])
     if cart['data']:
         text_message, fish_names_and_ids = format_cart(cart)
-        for fish in fish_names_and_ids:
+        for name_fish, id_fish in fish_names_and_ids:
             keyboard.append(
                 [InlineKeyboardButton(
-                    f'Убрать из корзины {fish[0]}',
-                    callback_data=f'Убрать|{fish[1]}')])
-        keyboard.append([InlineKeyboardButton('Оплатить', callback_data='Оплатить')])
+                    f'Убрать из корзины {name_fish}',
+                    callback_data=f'Убрать|{id_fish}')])
+        keyboard.append([InlineKeyboardButton(
+            'Оплатить', callback_data='Оплатить')])
 
     else:
         text_message = 'Ваша корзина пуста :C'
