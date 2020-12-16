@@ -11,9 +11,9 @@ def get_access_token(redis_conn):
         response = requests.get('https://api.moltin.com/oauth/access_token',
                                 data=data)
         response.raise_for_status()
-        decoded_response = response.json()
-        time_to_expire_s = decoded_response['expires_in']
-        access_token = decoded_response['access_token']
+        token_info = response.json()
+        time_to_expire_s = token_info['expires_in']
+        access_token = token_info['access_token']
         redis_conn.set('access_token', access_token, ex=time_to_expire_s)
     return access_token
 

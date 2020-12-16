@@ -37,7 +37,8 @@ def format_description(product_info):
 
 def format_cart(cart):
     filtred_cart = []
-    fish_names_and_ids = []
+    fish_names = []
+    fish_ids = []
     for fish in cart['data']:
         filtred_cart.append({
             'name': fish['name'],
@@ -47,7 +48,8 @@ def format_cart(cart):
             'quantity': fish['quantity']
 
         })
-        fish_names_and_ids.append([fish["name"], fish["id"]])
+        fish_names.append(fish["name"])
+        fish_ids.append(fish["id"])
     total_to_pay = cart['meta']['display_price']['without_tax']['formatted']
     text_message = ''
     for fish in filtred_cart:
@@ -60,7 +62,7 @@ def format_cart(cart):
             {fish['quantity']}kg in cart for {fish['total']}
             ''')
     text_message += f'{total_to_pay}'
-    return textwrap.dedent(text_message), fish_names_and_ids
+    return textwrap.dedent(text_message), fish_names, fish_ids
 
 
 def start(update: Update, context: CallbackContext):
@@ -85,8 +87,8 @@ def handle_cart(update: Update, context: CallbackContext):
     keyboard = []
     keyboard.append([InlineKeyboardButton('В меню', callback_data='В меню')])
     if cart['data']:
-        text_message, fish_names_and_ids = format_cart(cart)
-        for name_fish, id_fish in fish_names_and_ids:
+        text_message, fish_names, fish_ids = format_cart(cart)
+        for name_fish, id_fish in zip(fish_names, fish_ids):
             keyboard.append(
                 [InlineKeyboardButton(
                     f'Убрать из корзины {name_fish}',
