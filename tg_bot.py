@@ -74,7 +74,7 @@ def start(redis_conn, update: Update, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     context.bot.send_message(
-        text='Please choose:', chat_id=update.effective_user.id,
+        text='Пожалуйста выберите: ', chat_id=update.effective_user.id,
         reply_markup=reply_markup)
     return 'HANDLE_MENU'
 
