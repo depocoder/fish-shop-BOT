@@ -1,5 +1,4 @@
 import os
-import json
 
 import redis
 import requests
@@ -14,7 +13,7 @@ def get_access_token(redis_conn):
         response = requests.get('https://api.moltin.com/oauth/access_token',
                                 data=data)
         response.raise_for_status()
-        decoded_response = json.loads(response.text)
+        decoded_response = response.json()
         time_to_expire_s = decoded_response['expires_in']
         access_token = decoded_response['access_token']
         redis_conn.set('access_token', access_token, ex=time_to_expire_s)
@@ -50,7 +49,7 @@ def add_to_cart(access_token, quantity, item_id, chat_id):
 
     response = requests.post(
         f'https://api.moltin.com/v2/carts/{chat_id}/items', headers=headers,
-        data=json.dumps(data))
+        json=data)
     response.raise_for_status()
     return response.json()
 
@@ -96,7 +95,7 @@ def create_customer(access_token, chat_id, email):
         "password": "erwedasdwqrwrqwead"}}
     response = requests.post(
         'https://api.moltin.com/v2/customers',
-        headers=headers, data=json.dumps(data))
+        headers=headers, json=data)
     response.raise_for_status()
 
 
