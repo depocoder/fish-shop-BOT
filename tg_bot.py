@@ -2,6 +2,8 @@ import os
 import logging
 from functools import partial
 import textwrap
+
+from validate_email import validate_email
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Filters, Updater
@@ -82,6 +84,7 @@ def handle_cart(redis_conn, update: Update, context: CallbackContext):
     chat_id = update.effective_user.id
     cart = get_cart(access_token, chat_id)
     keyboard = []
+    keyboard.append([InlineKeyboardButton('Назад', callback_data='Назад')])
     if cart['data']:
         text_message, fish_names_and_ids = format_cart(cart)
         for fish in fish_names_and_ids:
@@ -89,9 +92,11 @@ def handle_cart(redis_conn, update: Update, context: CallbackContext):
                 [InlineKeyboardButton(
                     f'Убрать из корзины {fish[0]}',
                     callback_data=f'Убрать|{fish[1]}')])
+        else:
+            keyboard.append([InlineKeyboardButton('Оплатить', callback_data='Оплатить')])
+
     else:
         text_message = 'Ваша корзина пуста :C'
-    keyboard.append([InlineKeyboardButton('Назад', callback_data='Назад')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     context.bot.send_message(
         text=text_message, chat_id=chat_id, reply_markup=reply_markup)
@@ -111,6 +116,12 @@ def handle_description(redis_conn, update: Update, context: CallbackContext):
         handle_cart(redis_conn, update, context)
         query.message.delete()
         return "HANDLE_DESCRIPTION"
+    elif query.data == 'Оплатить':
+        query.message.delete()
+        context.bot.send_message(
+            text='Пожалуйста укажите ваш email пример "myemail@gmail.com"',
+            chat_id=chat_id)
+        return "WAITING_EMAIL"
     elif 'Убрать' in query.data:
         item_id = query.data.split("|")[1]
         delete_from_cart(access_token, item_id, chat_id)
@@ -151,10 +162,16 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
     return "HANDLE_DESCRIPTION"
 
 
-def echo(update: Update, context: CallbackContext):
+def waiting_email(redis_conn, update: Update, context: CallbackContext):
     users_reply = update.message.text
-    update.message.reply_text(users_reply)
-    return "ECHO"
+    is_valid = validate_email(users_reply)
+    if is_valid:
+        update.message.reply_text(
+            f"Вы прислали мне эту почту - {users_reply}. Мы скоро свяжемся.")
+        start(redis_conn, update, context)
+        return "HANDLE_DESCRIPTION"
+    update.message.reply_text(f"Ошибка! неверный email - '{users_reply}'")
+    return "WAITING_EMAIL"
 
 
 def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
@@ -162,6 +179,7 @@ def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
     p_handle_menu = partial(handle_menu, redis_conn)
     p_handle_description = partial(handle_description, redis_conn)
     p_handle_cart = partial(handle_cart, redis_conn)
+    p_waiting_email = partial(waiting_email, redis_conn)
     if update.message:
         user_reply = update.message.text
     elif update.callback_query:
@@ -175,10 +193,10 @@ def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
 
     states_functions = {
         'START': p_start,
-        'ECHO': echo,
         'HANDLE_MENU': p_handle_menu,
         'HANDLE_DESCRIPTION': p_handle_description,
         'HANDLE_CART': p_handle_cart,
+        'WAITING_EMAIL': p_waiting_email,
     }
     state_handler = states_functions[user_state]
     # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
