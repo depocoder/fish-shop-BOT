@@ -98,6 +98,3 @@ def create_customer(access_token, chat_id, email):
         'https://api.moltin.com/v2/customers',
         headers=headers, json=data)
     response.raise_for_status()
-
-
-if __name__ == "__main__":

@@ -1,6 +1,5 @@
 import os
 import logging
-from functools import partial
 import textwrap
 
 from validate_email import validate_email
@@ -64,7 +63,7 @@ def format_cart(cart):
     return textwrap.dedent(text_message), fish_names_and_ids
 
 
-def start(redis_conn, update: Update, context: CallbackContext):
+def start(update: Update, context: CallbackContext):
     keyboard = []
     access_token = get_access_token(redis_conn)
     for product in get_products(access_token):
@@ -79,7 +78,7 @@ def start(redis_conn, update: Update, context: CallbackContext):
     return 'HANDLE_MENU'
 
 
-def handle_cart(redis_conn, update: Update, context: CallbackContext):
+def handle_cart(update: Update, context: CallbackContext):
     access_token = get_access_token(redis_conn)
     chat_id = update.effective_user.id
     cart = get_cart(access_token, chat_id)
@@ -92,8 +91,7 @@ def handle_cart(redis_conn, update: Update, context: CallbackContext):
                 [InlineKeyboardButton(
                     f'Убрать из корзины {fish[0]}',
                     callback_data=f'Убрать|{fish[1]}')])
-        else:
-            keyboard.append([InlineKeyboardButton('Оплатить', callback_data='Оплатить')])
+        keyboard.append([InlineKeyboardButton('Оплатить', callback_data='Оплатить')])
 
     else:
         text_message = 'Ваша корзина пуста :C'
@@ -103,17 +101,17 @@ def handle_cart(redis_conn, update: Update, context: CallbackContext):
     return "HANDLE_DESCRIPTION"
 
 
-def handle_description(redis_conn, update: Update, context: CallbackContext):
+def handle_description(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     access_token = get_access_token(redis_conn)
     chat_id = update.effective_user.id
     if query.data == 'В меню':
-        start(redis_conn, update, context)
+        start(update, context)
         query.message.delete()
         return 'HANDLE_MENU'
     elif query.data == 'Корзина':
-        handle_cart(redis_conn, update, context)
+        handle_cart(update, context)
         query.message.delete()
         return "HANDLE_DESCRIPTION"
     elif query.data == 'Оплатить':
@@ -125,7 +123,7 @@ def handle_description(redis_conn, update: Update, context: CallbackContext):
     elif 'Убрать' in query.data:
         item_id = query.data.split("|")[1]
         delete_from_cart(access_token, item_id, chat_id)
-        handle_cart(redis_conn, update, context)
+        handle_cart(update, context)
         query.message.delete()
         return "HANDLE_DESCRIPTION"
     quantity, item_id = query.data.split('|')
@@ -135,12 +133,12 @@ def handle_description(redis_conn, update: Update, context: CallbackContext):
     return 'HANDLE_DESCRIPTION'
 
 
-def handle_menu(redis_conn, update: Update, context: CallbackContext):
+def handle_menu(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     query.message.delete()
     if query.data == 'Корзина':
-        handle_cart(redis_conn, update, context)
+        handle_cart(update, context)
         return "HANDLE_DESCRIPTION"
     access_token = get_access_token(redis_conn)
     product_info = get_element_by_id(access_token, query.data)
@@ -162,7 +160,7 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
     return "HANDLE_DESCRIPTION"
 
 
-def waiting_email(redis_conn, update: Update, context: CallbackContext):
+def waiting_email(update: Update, context: CallbackContext):
     users_reply = update.message.text
     is_valid = validate_email(users_reply)
     if is_valid:
@@ -171,18 +169,13 @@ def waiting_email(redis_conn, update: Update, context: CallbackContext):
             f"Вы прислали мне эту почту - {users_reply}. Мы скоро свяжемся.")
         create_customer(
             access_token, str(update.effective_user.id), users_reply)
-        start(redis_conn, update, context)
+        start(update, context)
         return "HANDLE_DESCRIPTION"
     update.message.reply_text(f"Ошибка! неверный email - '{users_reply}'")
     return "WAITING_EMAIL"
 
 
-def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
-    p_start = partial(start, redis_conn)
-    p_handle_menu = partial(handle_menu, redis_conn)
-    p_handle_description = partial(handle_description, redis_conn)
-    p_handle_cart = partial(handle_cart, redis_conn)
-    p_waiting_email = partial(waiting_email, redis_conn)
+def handle_users_reply(update: Update, context: CallbackContext):
     if update.message:
         user_reply = update.message.text
     elif update.callback_query:
@@ -195,11 +188,11 @@ def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
         user_state = context.user_data.get('state')
 
     states_functions = {
-        'START': p_start,
-        'HANDLE_MENU': p_handle_menu,
-        'HANDLE_DESCRIPTION': p_handle_description,
-        'HANDLE_CART': p_handle_cart,
-        'WAITING_EMAIL': p_waiting_email,
+        'START': start,
+        'HANDLE_MENU': handle_menu,
+        'HANDLE_DESCRIPTION': handle_description,
+        'HANDLE_CART': handle_cart,
+        'WAITING_EMAIL': waiting_email,
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
@@ -220,13 +213,11 @@ if __name__ == '__main__':
     redis_conn = redis.Redis(
         host=os.getenv('REDIS_HOST'), password=os.getenv('REDIS_PASSWORD'),
         port=os.getenv('REDIS_PORT'), db=0, decode_responses=True)
-    p_handle_users_reply = partial(handle_users_reply, redis_conn)
-    p_handle_menu = partial(handle_menu, redis_conn)
     updater = Updater(token=os.getenv("TG_TOKEN"), use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_error_handler(error_handler)
-    dispatcher.add_handler(CallbackQueryHandler(p_handle_users_reply))
-    updater.dispatcher.add_handler(CallbackQueryHandler(p_handle_menu))
-    dispatcher.add_handler(MessageHandler(Filters.text, p_handle_users_reply))
-    dispatcher.add_handler(CommandHandler('start', p_handle_users_reply))
+    dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
+    updater.dispatcher.add_handler(CallbackQueryHandler(handle_menu))
+    dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
+    dispatcher.add_handler(CommandHandler('start', handle_users_reply))
     updater.start_polling()
