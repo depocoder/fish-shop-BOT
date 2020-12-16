@@ -2,7 +2,6 @@ import os
 import logging
 from functools import partial
 import textwrap
-
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Filters, Updater
@@ -12,7 +11,7 @@ import redis
 
 from motlin_api import (
     get_products, get_access_token, get_element_by_id,
-    get_link_image, add_to_cart, get_cart)
+    get_link_image, add_to_cart, get_cart, delete_from_cart)
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,7 @@ def format_description(product_info):
 
 def format_cart(cart):
     filtred_cart = []
+    fish_names_and_ids = []
     for fish in cart['data']:
         filtred_cart.append({
             'name': fish['name'],
@@ -46,6 +46,7 @@ def format_cart(cart):
             'quantity': fish['quantity']
 
         })
+        fish_names_and_ids.append([fish["name"], fish["id"]])
     total_to_pay = cart['meta']['display_price']['without_tax']['formatted']
     text_message = ''
     for fish in filtred_cart:
@@ -57,8 +58,8 @@ def format_cart(cart):
             {fish['price_per_kg']} price per kg
             {fish['quantity']}kg in cart for {fish['total']}
             ''')
-    text_message += total_to_pay
-    return textwrap.dedent(text_message)
+    text_message += f'{total_to_pay}'
+    return textwrap.dedent(text_message), fish_names_and_ids
 
 
 def start(redis_conn, update: Update, context: CallbackContext):
@@ -80,29 +81,46 @@ def handle_cart(redis_conn, update: Update, context: CallbackContext):
     access_token = get_access_token(redis_conn)
     chat_id = update.effective_user.id
     cart = get_cart(access_token, chat_id)
-    text_message = format_cart(cart)
-    keyboard = [
-        [InlineKeyboardButton('Назад', callback_data='Назад')]]
+    keyboard = []
+    if cart['data']:
+        text_message, fish_names_and_ids = format_cart(cart)
+        for fish in fish_names_and_ids:
+            keyboard.append(
+                [InlineKeyboardButton(
+                    f'Убрать из корзины {fish[0]}',
+                    callback_data=f'Убрать|{fish[1]}')])
+    else:
+        text_message = 'Ваша корзина пуста :C'
+    keyboard.append([InlineKeyboardButton('Назад', callback_data='Назад')])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    context.bot.send_message(text=text_message, chat_id=chat_id, reply_markup=reply_markup)
+    context.bot.send_message(
+        text=text_message, chat_id=chat_id, reply_markup=reply_markup)
     return "HANDLE_DESCRIPTION"
 
 
 def handle_description(redis_conn, update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+    access_token = get_access_token(redis_conn)
+    chat_id = update.effective_user.id
     if query.data == 'Назад':
-        query.message.delete()
         start(redis_conn, update, context)
+        query.message.delete()
         return 'HANDLE_MENU'
     elif query.data == 'Корзина':
         handle_cart(redis_conn, update, context)
+        query.message.delete()
+        return "HANDLE_DESCRIPTION"
+    elif 'Убрать' in query.data:
+        item_id = query.data.split("|")[1]
+        delete_from_cart(access_token, item_id, chat_id)
+        handle_cart(redis_conn, update, context)
+        query.message.delete()
         return "HANDLE_DESCRIPTION"
     quantity, item_id = query.data.split('|')
-    access_token = get_access_token(redis_conn)
-    add_to_cart(access_token, quantity, item_id, update.effective_user.id)
+    add_to_cart(access_token, int(quantity), item_id, chat_id)
     context.bot.send_message(
-        text='added', chat_id=update.effective_user.id)
+        text='added', chat_id=chat_id)
     return 'HANDLE_DESCRIPTION'
 
 
