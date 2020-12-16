@@ -84,7 +84,7 @@ def handle_cart(redis_conn, update: Update, context: CallbackContext):
     chat_id = update.effective_user.id
     cart = get_cart(access_token, chat_id)
     keyboard = []
-    keyboard.append([InlineKeyboardButton('Назад', callback_data='Назад')])
+    keyboard.append([InlineKeyboardButton('В меню', callback_data='В меню')])
     if cart['data']:
         text_message, fish_names_and_ids = format_cart(cart)
         for fish in fish_names_and_ids:
@@ -108,7 +108,7 @@ def handle_description(redis_conn, update: Update, context: CallbackContext):
     query.answer()
     access_token = get_access_token(redis_conn)
     chat_id = update.effective_user.id
-    if query.data == 'Назад':
+    if query.data == 'В меню':
         start(redis_conn, update, context)
         query.message.delete()
         return 'HANDLE_MENU'
@@ -148,7 +148,7 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
     text_mess = format_description(product_info)
     image_link = get_link_image(access_token, image_id)['data']['link']['href']
     keyboard = [
-        [InlineKeyboardButton('Назад', callback_data='Назад')],
+        [InlineKeyboardButton('В меню', callback_data='В меню')],
         [
             InlineKeyboardButton('1 кг', callback_data=f'1|{query.data}'),
             InlineKeyboardButton('5 кг', callback_data=f'5|{query.data}'),
