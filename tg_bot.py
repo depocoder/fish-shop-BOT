@@ -202,14 +202,13 @@ def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
         'WAITING_EMAIL': p_waiting_email,
     }
     state_handler = states_functions[user_state]
-    # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
-    # Оставляю этот try...except, чтобы код не падал молча.
-    # Этот фрагмент можно переписать.
-    try:
-        next_state = state_handler(update, context)
-        context.user_data.update({"state": next_state})
-    except Exception as err:
-        print(err)
+    next_state = state_handler(update, context)
+    context.user_data.update({"state": next_state})
+
+
+def error_handler(update: Update, context: CallbackContext):
+    logger.error(
+        msg="Exception while handling an update:", exc_info=context.error)
 
 
 if __name__ == '__main__':
@@ -225,6 +224,7 @@ if __name__ == '__main__':
     p_handle_menu = partial(handle_menu, redis_conn)
     updater = Updater(token=os.getenv("TG_TOKEN"), use_context=True)
     dispatcher = updater.dispatcher
+    dispatcher.add_error_handler(error_handler)
     dispatcher.add_handler(CallbackQueryHandler(p_handle_users_reply))
     updater.dispatcher.add_handler(CallbackQueryHandler(p_handle_menu))
     dispatcher.add_handler(MessageHandler(Filters.text, p_handle_users_reply))
