@@ -101,7 +101,3 @@ def create_customer(access_token, chat_id, email):
 
 
 if __name__ == "__main__":
-    load_dotenv()
-    redis_conn = redis.Redis(
-        host=os.getenv('REDIS_HOST'), password=os.getenv('REDIS_PASSWORD'),
-        port=os.getenv('REDIS_PORT'), db=0, decode_responses=True)
