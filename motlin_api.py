@@ -72,7 +72,7 @@ def get_cart(access_token, chat_id):
     return response.json()
 
 
-def get_link_image(access_token, image_id):
+def get_image_link(access_token, image_id):
     response = requests.get(
         f'https://api.moltin.com/v2/files/{image_id}',
         headers={

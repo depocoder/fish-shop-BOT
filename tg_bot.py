@@ -12,7 +12,7 @@ import redis
 
 from motlin_api import (
     get_products, get_access_token, get_element_by_id,
-    get_link_image, add_to_cart, get_cart, delete_from_cart, create_customer)
+    get_image_link, add_to_cart, get_cart, delete_from_cart, create_customer)
 
 
 logger = logging.getLogger(__name__)
@@ -145,7 +145,7 @@ def handle_menu(update: Update, context: CallbackContext):
     product_info = get_element_by_id(access_token, query.data)
     image_id = product_info['relationships']['main_image']['data']['id']
     text_mess = format_description(product_info)
-    image_link = get_link_image(access_token, image_id)['data']['link']['href']
+    image_link = get_image_link(access_token, image_id)['data']['link']['href']
     keyboard = [
         [InlineKeyboardButton('В меню', callback_data='В меню')],
         [
