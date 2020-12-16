@@ -66,9 +66,9 @@ def format_cart(cart):
 def start(update: Update, context: CallbackContext):
     keyboard = []
     access_token = get_access_token(redis_conn)
-    for product in get_products(access_token):
-        keyboard.append([InlineKeyboardButton(
-            product['name'], callback_data=product['id'])])
+    keyboard_product = [
+        [InlineKeyboardButton(product['name'], callback_data=product['id'])] for product in get_products(access_token)]
+    keyboard += keyboard_product
     keyboard.append([InlineKeyboardButton('Корзина', callback_data='Корзина')])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
