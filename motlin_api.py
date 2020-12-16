@@ -83,6 +83,23 @@ def get_link_image(access_token, image_id):
     return response.json()
 
 
+def create_customer(access_token, chat_id, email):
+    headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+            }
+
+    data = {"data": {
+        "type": "customer",
+        "name": chat_id,
+        "email": email,
+        "password": "erwedasdwqrwrqwead"}}
+    response = requests.post(
+        'https://api.moltin.com/v2/customers',
+        headers=headers, data=json.dumps(data))
+    response.raise_for_status()
+
+
 if __name__ == "__main__":
     load_dotenv()
     redis_conn = redis.Redis(
