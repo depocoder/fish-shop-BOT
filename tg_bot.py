@@ -26,21 +26,22 @@ def start(redis_conn, update: Update, context: CallbackContext):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    update.message.reply_text('Please choose:', reply_markup=reply_markup)
+    context.bot.send_message(
+        text='Please choose:', chat_id=update.effective_user.id,
+        reply_markup=reply_markup)
     return 'HANDLE_MENU'
 
 
-def handle_menu(redis_conn, update: Update, context: CallbackContext):
-    query = update.callback_query
 
-    query.answer()
-    access_token = get_access_token(redis_conn)
-    product_info = get_element_by_id(access_token, query.data)
+def handle_description():
+    pass
+
+
+def format_message(product_info):
     name = product_info['name']
     description = product_info['description']
     price = product_info['meta']['display_price']['with_tax']['formatted']
     weight = product_info['weight']['kg']
-    image_id = product_info['relationships']['main_image']['data']['id']
     text_mess = (
         f'''\
         {name}
@@ -50,10 +51,23 @@ def handle_menu(redis_conn, update: Update, context: CallbackContext):
 
         {description}
         ''')
+    return textwrap.dedent(text_mess)
+
+
+def handle_menu(redis_conn, update: Update, context: CallbackContext):
+    query = update.callback_query
+
+    query.answer()
+    access_token = get_access_token(redis_conn)
+    product_info = get_element_by_id(access_token, query.data)
+    image_id = product_info['relationships']['main_image']['data']['id']
+    text_mess = format_message(product_info)
     image_link = get_link_image(access_token, image_id)['data']['link']['href']
+    keyboard = [[InlineKeyboardButton('Назад', callback_data='Назад')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
     context.bot.send_photo(
         chat_id=update.effective_user.id, photo=image_link,
-        caption=textwrap.dedent(text_mess))
+        caption=text_mess, reply_markup=reply_markup)['message_id']
     return "START"
 
 
@@ -81,6 +95,7 @@ def handle_users_reply(redis_conn, update: Update, context: CallbackContext):
         'START': p_start,
         'ECHO': echo,
         'HANDLE_MENU': p_handle_menu,
+        'HANDLE_DESCRIPTION': handle_description,
     }
     state_handler = states_functions[user_state]
     # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
