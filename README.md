@@ -1,10 +1,9 @@
-# fish-shop[BOT
+# fish-shop-bot
  
-# quiz_bot
  
 Этот проект позволяет создать своего телеграм бота для магазина рыбы (Telegram). Этого бота еще нужно улучшать, стандарты MVP выполнены.
-Бот работает на [CMS](https://www.elasticpath.com/)
-
+Бот работает на [CMS](https://www.elasticpath.com/).    
+![](https://media3.giphy.com/media/pXvbs1iY5v4zQPd9Z1/giphy.gif)
 
 ## Подготовка к запуску Mac OS
 Сначала зарегестрируйтесь на [redis](https://redis.io/)     
