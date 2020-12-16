@@ -70,6 +70,7 @@ def get_cart(access_token, chat_id):
         headers={
             'Authorization': f'Bearer {access_token}',
         })
+    response.raise_for_status()
     return response.json()
 
 
