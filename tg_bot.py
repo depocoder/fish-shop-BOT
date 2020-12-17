@@ -188,6 +188,7 @@ def waiting_email(update: Update, context: CallbackContext):
 
 
 def handle_users_reply(update: Update, context: CallbackContext):
+    chat_id = update.effective_user.id
     if update.message:
         user_reply = update.message.text
     elif update.callback_query:
@@ -197,7 +198,7 @@ def handle_users_reply(update: Update, context: CallbackContext):
     if user_reply == '/start':
         user_state = 'START'
     else:
-        user_state = context.user_data.get('state')
+        user_state = redis_conn.get(chat_id)
 
     states_functions = {
         'START': start,
@@ -208,7 +209,7 @@ def handle_users_reply(update: Update, context: CallbackContext):
     }
     state_handler = states_functions[user_state]
     next_state = state_handler(update, context)
-    context.user_data.update({"state": next_state})
+    redis_conn.set(chat_id, next_state)
 
 
 def error_handler(update: Update, context: CallbackContext):
