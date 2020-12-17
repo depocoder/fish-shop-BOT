@@ -67,13 +67,12 @@ def format_cart(cart):
 
 
 def start(update: Update, context: CallbackContext):
-    keyboard = []
     access_token = get_access_token(redis_conn)
     keyboard_product = [
         [InlineKeyboardButton(product['name'], callback_data=product['id'])] for product in get_products(access_token)]
-    keyboard += keyboard_product
-    keyboard.append([InlineKeyboardButton('Корзина', callback_data='Корзина')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard_product.append(
+        [InlineKeyboardButton('Корзина', callback_data='Корзина')])
+    reply_markup = InlineKeyboardMarkup(keyboard_product)
 
     context.bot.send_message(
         text='Пожалуйста выберите: ', chat_id=update.effective_user.id,
@@ -225,7 +224,7 @@ if __name__ == '__main__':
     dispatcher = updater.dispatcher
     dispatcher.add_error_handler(error_handler)
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
-    updater.dispatcher.add_handler(CallbackQueryHandler(handle_menu))
+    dispatcher.add_handler(CallbackQueryHandler(handle_menu))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
     dispatcher.add_handler(CommandHandler('start', handle_users_reply))
     updater.start_polling()
