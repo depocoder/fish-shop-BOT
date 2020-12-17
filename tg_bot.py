@@ -86,18 +86,21 @@ def handle_cart(update: Update, context: CallbackContext):
     cart = get_cart(access_token, chat_id)
     keyboard = []
     keyboard.append([InlineKeyboardButton('В меню', callback_data='В меню')])
+
     if not cart['data']:
         text_message = 'Ваша корзина пуста :C'
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.send_message(
             text=text_message, chat_id=chat_id, reply_markup=reply_markup)
         return "HANDLE_DESCRIPTION"
+
     text_message, fish_names, fish_ids = format_cart(cart)
     for name_fish, id_fish in zip(fish_names, fish_ids):
         keyboard.append(
             [InlineKeyboardButton(
                 f'Убрать из корзины {name_fish}',
                 callback_data=f'Убрать|{id_fish}')])
+
     keyboard.append([InlineKeyboardButton(
         'Оплатить', callback_data='Оплатить')])
     reply_markup = InlineKeyboardMarkup(keyboard)
