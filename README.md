@@ -29,7 +29,7 @@ pip3 install -r requirements.txt
 Запуск бота   
 
 ```
-python3 vk_bot.py
+python3 tg_bot.py
 ```
 
 Создайте файл ".env" в него надо прописать ваши token'ы.   
